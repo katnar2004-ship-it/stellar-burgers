@@ -1,6 +1,19 @@
 import { test, expect } from '@playwright/test';
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, context }) => {
+  await context.addCookies([
+    {
+      name: 'accessToken',
+      value: 'fake-access-token',
+      domain: 'localhost',
+      path: '/'
+    }
+  ]);
+
+  await page.addInitScript(() => {
+    localStorage.setItem('refreshToken', 'fake-refresh-token');
+  });
+
   await page.routeFromHAR('./tests/hars/ingredients.har', {
     url: '**/api/ingredients',
     update: false
@@ -8,6 +21,11 @@ test.beforeEach(async ({ page }) => {
 
   await page.routeFromHAR('./tests/hars/user.har', {
     url: '**/auth/user',
+    update: false
+  });
+
+  await page.routeFromHAR('./tests/hars/order.har', {
+    url: '**/api/orders',
     update: false
   });
 
@@ -89,26 +107,12 @@ test.describe('Модальное окно ингредиента', () => {
 });
 
 test.describe('Оформление заказа', () => {
-  test('оформление заказа', async ({ page, context }) => {
-    await context.addCookies([
-      {
-        name: 'accessToken',
-        value: 'fake-access-token',
-        domain: 'localhost',
-        path: '/'
-      }
-    ]);
-
-    await page.routeFromHAR('./tests/hars/order.har', {
-      url: '**/api/orders',
-      update: true
+  test('оформление заказа', async ({ page }) => {
+    await expect(page.getByTestId('ingredient-bun').first()).toBeVisible({
+      timeout: 10000
     });
 
-    await page.goto('/');
-
-    await page.evaluate(() => {
-      localStorage.setItem('refreshToken', 'mock-refresh-token');
-    });
+    await expect(page.getByTestId('constructor-bun-top')).not.toBeVisible();
 
     const bun = page.locator('[data-ingredient-id="643d69a5c3f7b9001cfa093d"]');
     await bun.getByRole('button', { name: 'Добавить' }).click();
@@ -123,11 +127,15 @@ test.describe('Оформление заказа', () => {
     );
     await main2.getByRole('button', { name: 'Добавить' }).click();
 
+    await expect(page.getByTestId('constructor-bun-top')).toBeVisible();
+
+    await expect(page.getByTestId('modal')).not.toBeVisible();
+
     await page.getByTestId('order-button').click();
 
     const modal = page.getByTestId('modal');
     await expect(modal).toBeVisible();
-    await expect(modal.getByText('109014')).toBeVisible({ timeout: 15000 });
+    await expect(modal.getByText('12345')).toBeVisible({ timeout: 15000 });
 
     await expect(page.getByTestId('constructor-bun-top')).not.toBeVisible();
     await expect(page.getByTestId('constructor-ingredients')).not.toContainText(
@@ -138,6 +146,6 @@ test.describe('Оформление заказа', () => {
     );
 
     await page.getByTestId('modal-close-button').click();
-    await expect(page.getByTestId('modal')).not.toBeVisible();
+    await expect(modal).not.toBeVisible();
   });
 });
