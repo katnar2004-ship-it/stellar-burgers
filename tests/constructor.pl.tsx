@@ -135,7 +135,7 @@ test.describe('Оформление заказа', () => {
 
     const modal = page.getByTestId('modal');
     await expect(modal).toBeVisible();
-    await expect(modal.getByText('12345')).toBeVisible({ timeout: 15000 });
+    await expect(modal.getByText('109014')).toBeVisible({ timeout: 15000 });
 
     await expect(page.getByTestId('constructor-bun-top')).not.toBeVisible();
     await expect(page.getByTestId('constructor-ingredients')).not.toContainText(
